@@ -6,5 +6,16 @@
 
 package com.kenvix.screenshare.screen
 
+import java.awt.image.BufferedImage
+
 interface ScreenCapturer {
+    var fragmentWidth: Int
+    var fragmentHeight: Int
+    val screenWidth: Int
+    val screenHeight: Int
+
+    var onFragmentCaptured: ((output: BufferedImage) -> Unit)?
+    var fps: Int
+
+    fun updateScreenProfile()
 }
