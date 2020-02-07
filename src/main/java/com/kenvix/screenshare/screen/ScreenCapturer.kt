@@ -14,8 +14,12 @@ interface ScreenCapturer {
     val screenWidth: Int
     val screenHeight: Int
 
-    var onFragmentCaptured: ((output: BufferedImage) -> Unit)?
+    var callback: Callback?
     var fps: Int
 
     fun updateScreenProfile()
+
+    interface Callback {
+        suspend fun onFragmentCaptured(image: BufferedImage, x: Int, y: Int)
+    }
 }

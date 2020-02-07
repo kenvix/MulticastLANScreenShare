@@ -7,7 +7,6 @@
 package com.kenvix.screenshare.screen
 
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.ticker
 import java.awt.Rectangle
 import java.awt.Robot
@@ -16,7 +15,7 @@ import java.awt.image.BufferedImage
 
 class RobotScreenCapturer(
     override var fps: Int = 30,
-    override var onFragmentCaptured: ((output: BufferedImage) -> Unit)? = null
+    override var callback: ScreenCapturer.Callback? = null
 ) : ScreenCapturer, AutoCloseable {
 
     private val robot = Robot()
@@ -54,7 +53,7 @@ class RobotScreenCapturer(
                     x = (x + actualFragmentWidth) % screenWidth
                     y = (y + actualFragmentHeight) % screenHeight
 
-                    onFragmentCaptured?.invoke(capture(x, y))
+                    callback?.onFragmentCaptured(capture(x, y), x, y)
                 }
             }
         }

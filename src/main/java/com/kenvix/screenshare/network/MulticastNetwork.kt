@@ -15,30 +15,30 @@ import java.net.MulticastSocket
 abstract class MulticastNetwork(
     val multicastAddress: InetAddress = InetAddress.getByName("230.114.5.14"),
     val multicastPort: Int = 1919
-) : AutoCloseable {
+) : AutoCloseable, UDPNetwork {
 
     val multicastSocket: MulticastSocket = MulticastSocket(multicastPort)
-    var maxPacketSize: Int = 1200
+    override var maxPacketSize: Int = 1200
 
-    suspend fun send(packet: DatagramPacket) = withContext(Dispatchers.IO) {
+    override suspend fun send(packet: DatagramPacket) = withContext(Dispatchers.IO) {
         multicastSocket.send(packet)
     }
 
-    suspend fun send(byteArray: ByteArray, length: Int = byteArray.size, offset: Int = 0)
-            = send(DatagramPacket(byteArray, offset, length, multicastAddress, multicastPort))
+    override suspend fun send(byteArray: ByteArray, length: Int, offset: Int)
+        = send(DatagramPacket(byteArray, offset, length, multicastAddress, multicastPort))
 
-    suspend fun read(length: Int = maxPacketSize): DatagramPacket = withContext(Dispatchers.IO) {
+    override suspend fun read(length: Int): DatagramPacket = withContext(Dispatchers.IO) {
         val packet = DatagramPacket(ByteArray(length), 0, length)
         multicastSocket.receive(packet)
 
         packet
     }
 
-    suspend fun joinGroup() = withContext(Dispatchers.IO) {
+    override suspend fun joinGroup() = withContext(Dispatchers.IO) {
         multicastSocket.joinGroup(multicastAddress)
     }
 
-    suspend fun leaveGroup() = withContext(Dispatchers.IO) {
+    override suspend fun leaveGroup() = withContext(Dispatchers.IO) {
         multicastSocket.leaveGroup(multicastAddress)
     }
 
