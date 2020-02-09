@@ -7,6 +7,7 @@
 package com.kenvix.screenshare.screen
 
 import java.awt.image.BufferedImage
+import java.awt.image.RenderedImage
 
 interface ScreenCapturer {
     var fragmentWidth: Int
@@ -16,10 +17,11 @@ interface ScreenCapturer {
 
     var callback: Callback?
     var fps: Int
+    var monitor: Int
 
     fun updateScreenProfile()
 
     interface Callback {
-        suspend fun onFragmentCaptured(image: BufferedImage, x: Int, y: Int)
+        suspend fun onFragmentCaptured(image: RenderedImage, x: Int, y: Int)
     }
 }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.MulticastSocket
 
 abstract class MulticastNetwork(
@@ -18,6 +19,7 @@ abstract class MulticastNetwork(
 ) : AutoCloseable, UDPNetwork {
 
     val multicastSocket: MulticastSocket = MulticastSocket(multicastPort)
+    val multicastSocketAddress = InetSocketAddress(multicastAddress, multicastPort)
     override var maxPacketSize: Int = 1200
 
     override suspend fun send(packet: DatagramPacket) = withContext(Dispatchers.IO) {

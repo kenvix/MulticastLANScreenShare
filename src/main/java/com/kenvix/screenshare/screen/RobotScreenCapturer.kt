@@ -8,20 +8,22 @@ package com.kenvix.screenshare.screen
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ticker
+import java.awt.GraphicsEnvironment
 import java.awt.Rectangle
 import java.awt.Robot
 import java.awt.Toolkit
 import java.awt.image.BufferedImage
 
 class RobotScreenCapturer(
-    override var fps: Int = 30,
-    override var callback: ScreenCapturer.Callback? = null
+    override var callback: ScreenCapturer.Callback? = null,
+    override var fps: Int = 5,
+    override var monitor: Int = 0
 ) : ScreenCapturer, AutoCloseable {
 
-    private val robot = Robot()
+    private val robot = Robot(GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices[monitor])
     private val toolkit = Toolkit.getDefaultToolkit()
 
-    var maxFragmentPixelNum: Int = 600
+    var maxFragmentPixelNum: Int = 8000
 
     override var fragmentWidth: Int  = 16
     override var fragmentHeight: Int = 9
@@ -37,23 +39,31 @@ class RobotScreenCapturer(
 
     @Suppress("DeferredResultUnused")
     @UseExperimental(ObsoleteCoroutinesApi::class)
-    fun start() {
+    fun start(shouldCaptureFullscreenOnce: Boolean = true) {
         captureJob = Job()
         captureWorkScope = CoroutineScope(Dispatchers.Default + captureJob!!)
 
         updateScreenProfile()
         val tickerChannel = ticker(delayMillis = captureDelayMills, initialDelayMillis = 0)
 
-        captureWorkScope!!.launch {
-            var x = 0
-            var y = 0
+        if (shouldCaptureFullscreenOnce) {
+            captureWorkScope!!.launch {
+                for (tick in tickerChannel) {
+                    callback?.onFragmentCaptured(capture(0, 0, screenWidth, screenHeight), 0, 0)
+                }
+            }
+        } else {
+            captureWorkScope!!.launch {
+                for (tick in tickerChannel) {
+                    var x = 0
+                    var y = 0
 
-            for (tick in tickerChannel) {
-                async {
-                    x = (x + actualFragmentWidth) % screenWidth
-                    y = (y + actualFragmentHeight) % screenHeight
+                    while (y < screenHeight) {
+                        x += actualFragmentWidth
+                        y += actualFragmentHeight
 
-                    callback?.onFragmentCaptured(capture(x, y), x, y)
+                        callback?.onFragmentCaptured(capture(x, y), x, y)
+                    }
                 }
             }
         }
@@ -77,8 +87,9 @@ class RobotScreenCapturer(
             captureJob?.cancel()
     }
 
-    private suspend fun capture(x: Int, y: Int): BufferedImage = withContext(Dispatchers.Default) {
-        val rectangle = Rectangle(x, y, fragmentWidth, fragmentHeight)
+    private suspend fun capture(x: Int, y: Int, width: Int = actualFragmentWidth, height: Int = actualFragmentHeight): BufferedImage
+            = withContext(Dispatchers.Default) {
+        val rectangle = Rectangle(x, y, width, height)
         robot.createScreenCapture(rectangle)
     }
 }
