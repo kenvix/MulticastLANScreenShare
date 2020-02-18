@@ -8,61 +8,93 @@ package com.kenvix.screenshare.screen
 
 import com.kenvix.screenshare.network.UDPNetwork
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.image.DataBufferInt
 import java.awt.image.RenderedImage
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
-import java.util.zip.GZIPOutputStream
+import javax.imageio.IIOImage
+import javax.imageio.ImageIO
+import javax.imageio.ImageWriteParam
 
 
 class DefaultFragmentImageProcessor(
     val network: UDPNetwork,
-    val packetSize: Int = 600,
-    val useGzip: Boolean = true
+    val packetSize: Int = 1000
 ) : ScreenCapturer.Callback {
 
     private val intNum = packetSize / 4
 
-    @Suppress("DeferredResultUnused")
     @UseExperimental(ExperimentalUnsignedTypes::class)
     override suspend fun onFragmentCaptured(image: RenderedImage, x: Int, y: Int) = withContext(Dispatchers.Default) {
         val colorInts: IntArray = (image.data.dataBuffer as DataBufferInt).data
 
-        val byteBuffer: ByteBuffer = ByteBuffer.allocate(colorInts.size * 4)
-        val intBuffer: IntBuffer = byteBuffer.asIntBuffer()
-        intBuffer.put(colorInts)
+        directSend(compressImage(image, 0.5f))
+    }
 
-        val colorBytes: ByteArray = byteBuffer.array()
+    private suspend fun directSend(colorBytes: ByteArray) = withContext(Dispatchers.Default) {
         var i = 0
+        var order = 0
+        val sizeChannel = Channel<Int>(8)
+        val orderChannel = Channel<Int>(8)
 
         while (i < colorBytes.size) {
-            withContext(Dispatchers.IO) {
-                if (useGzip) {
-                    val result = ByteArrayOutputStream().use { colorResultStream ->
-                        val gzipStream = GZIPOutputStream(colorResultStream)
+            sizeChannel.send(i)
+            orderChannel.send(order)
+            order++
 
-                        if (i + packetSize > colorBytes.size)
-                            gzipStream.write(colorBytes, i, colorBytes.size - i)
-                        else
-                            gzipStream.write(colorBytes, i, packetSize)
+            launch(Dispatchers.IO) {
+                val offset = sizeChannel.receive()
+                val buffer = ByteBuffer.allocate(8 + 4 + packetSize)
+                buffer.asLongBuffer().put(System.currentTimeMillis())
+                buffer.asIntBuffer().put(orderChannel.receive())
 
-                        gzipStream.close()
-                        colorResultStream.toByteArray()
-                    }
+                if (offset + packetSize > colorBytes.size)
+                    buffer.put(colorBytes, offset, colorBytes.size - offset)
+                else
+                    buffer.put(colorBytes, offset, packetSize)
 
-                    network.send(result)
-                } else {
-                    if (i + packetSize > colorBytes.size)
-                        network.send(colorBytes, i, colorBytes.size - i)
-                    else
-                        network.send(colorBytes, i, packetSize)
-                }
+                network.send(buffer.array())
             }
 
             i += packetSize
         }
+    }
+
+    private fun compressImage(image: RenderedImage, compressionQuality: Float = 0.7f): ByteArray {
+        // The important part: Create in-memory stream
+        ByteArrayOutputStream().use { compressed ->
+            val outputStream = ImageIO.createImageOutputStream(compressed)
+
+            // Obtain writer for JPEG format
+            // NOTE: The rest of the code is just a cleaned up version of your code
+            // Obtain writer for JPEG format
+            val jpgWriter = ImageIO.getImageWritersByFormatName("jpg").next()
+
+            // Configure JPEG compression: 70% quality
+            val jpgWriteParam = jpgWriter.defaultWriteParam
+            jpgWriteParam.compressionMode = ImageWriteParam.MODE_EXPLICIT
+            jpgWriteParam.compressionQuality = compressionQuality
+            jpgWriter.output = outputStream
+
+            jpgWriter.write(null, IIOImage(image, null, null), jpgWriteParam)
+
+            // Dispose the writer to free resources
+            jpgWriter.dispose()
+
+            // Get data for further processing...
+            return compressed.toByteArray()
+        }
+    }
+
+    private fun convertIntArrayToByteArray(colorInts: IntArray): ByteArray {
+        val byteBuffer: ByteBuffer = ByteBuffer.allocate(colorInts.size * 4)
+        val intBuffer: IntBuffer = byteBuffer.asIntBuffer()
+        intBuffer.put(colorInts)
+
+        return byteBuffer.array()
     }
 }

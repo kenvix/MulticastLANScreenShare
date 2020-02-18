@@ -37,7 +37,6 @@ class RobotScreenCapturer(
     private var captureJob: CompletableJob? = null
     private var captureWorkScope: CoroutineScope? = null
 
-    @Suppress("DeferredResultUnused")
     @UseExperimental(ObsoleteCoroutinesApi::class)
     fun start(shouldCaptureFullscreenOnce: Boolean = true) {
         captureJob = Job()
