@@ -35,13 +35,13 @@ object Main {
         val host = getOptionValue('a', "230.114.5.14")
         val port = getOptionValue('p', 1919)
 
+        runAsClient()
+
         if (commands?.hasOption('s') == true) {
             runAsServer(host, port)
         } else {
             println("Client mode. Target multicast Address: $host    Port: $port")
         }
-
-        runAsClient()
 
         println()
 

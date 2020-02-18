@@ -13,6 +13,7 @@ import java.awt.image.BufferedImage;
 public class ClientUI {
     private static final ClientUI INSTANCE = new ClientUI();
     private JFrame frame;
+    private ImagePanel panel;
 
     public static ClientUI getInstance() {
         return INSTANCE;
@@ -20,7 +21,7 @@ public class ClientUI {
 
     public void show(int width, int height) {
         frame = new JFrame();
-        ImagePanel panel = new ImagePanel();
+        panel = new ImagePanel();
         setSize(width, height);
 
         frame.setResizable(true);
@@ -29,8 +30,10 @@ public class ClientUI {
         frame.setVisible(true);
     }
 
-    public void update() {
-
+    public void update(BufferedImage image) {
+        Dimension size = panel.getSize();
+        panel.setImg(resize(image, size.width, size.height));
+        panel.repaint();
     }
 
     public static BufferedImage resize(BufferedImage img, int newW, int newH) {

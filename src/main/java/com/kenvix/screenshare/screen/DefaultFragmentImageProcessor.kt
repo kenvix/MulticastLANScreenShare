@@ -7,13 +7,16 @@
 package com.kenvix.screenshare.screen
 
 import com.kenvix.screenshare.network.UDPNetwork
+import com.kenvix.screenshare.ui.ClientUI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.awt.image.RenderedImage
 import java.io.ByteArrayOutputStream
+import java.nio.Buffer
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
 import javax.imageio.IIOImage
@@ -32,10 +35,17 @@ class DefaultFragmentImageProcessor(
     override suspend fun onFragmentCaptured(image: RenderedImage, x: Int, y: Int) = withContext(Dispatchers.Default) {
         val colorInts: IntArray = (image.data.dataBuffer as DataBufferInt).data
 
-        directSend(compressImage(image, 0.5f))
+        sendToLoopback(image)
+        sendToNetwork(compressImage(image, 0.5f))
     }
 
-    private suspend fun directSend(colorBytes: ByteArray) = withContext(Dispatchers.Default) {
+    private suspend fun sendToLoopback(image: RenderedImage) = withContext(Dispatchers.Default) {
+        launch {
+            ClientUI.getInstance().update(image as BufferedImage)
+        }
+    }
+
+    private suspend fun sendToNetwork(colorBytes: ByteArray) = withContext(Dispatchers.Default) {
         var i = 0
         var order = 0
         val sizeChannel = Channel<Int>(8)
