@@ -5,7 +5,7 @@ package com.kenvix.screenshare
 import com.kenvix.screenshare.network.MulticastServer
 import com.kenvix.screenshare.screen.DefaultFragmentImageProcessor
 import com.kenvix.screenshare.screen.RobotScreenCapturer
-import com.kenvix.screenshare.ui.ClientUI
+import com.kenvix.screenshare.ui.GuiDispatcher
 import org.apache.commons.cli.*
 import java.net.InetAddress
 import java.text.SimpleDateFormat
@@ -21,6 +21,9 @@ object Main {
         private set
     var commands: CommandLine? = null
         private set
+
+    var windowWidth = getOptionValue('w', 1366)
+    var windowHeight = getOptionValue('e', 768)
 
     @JvmStatic
     fun main(args: Array<String>?) {
@@ -51,9 +54,6 @@ object Main {
     private fun runAsServer(host: String, port: Int) {
         val server = MulticastServer(multicastAddress = InetAddress.getByName(host), multicastPort = port)
 
-        server.onReceive = {
-            val data = it.data
-        }
         server.listen()
 
         val processor = DefaultFragmentImageProcessor(server, packetSize = getOptionValue('t', 1000))
@@ -64,11 +64,12 @@ object Main {
     }
 
     private fun runAsClient() {
-        val width = getOptionValue('w', 1366)
-        val height = getOptionValue('e', 768)
+        showWindow()
+    }
 
-        ClientUI.getInstance().show(width, height)
-        ClientUI.getInstance().setTitle("Client")
+    private fun showWindow() {
+        GuiDispatcher.show(windowWidth, windowHeight)
+        GuiDispatcher.title = "Client"
     }
 
     private fun readConsoleCommand() {
@@ -81,11 +82,13 @@ object Main {
             val command = commandString.split(' ')
 
             if (command.isNotEmpty()) {
-                if (command[0] == "help") {
-                    println("You can enter long command below to change options.")
-                    printHelp()
-                } else {
-                    //TODO: Handle command
+                when (command[0]) {
+                    "help" -> {
+                        println("You can enter long command below to change options.")
+                        printHelp()
+                    }
+                    "exit" -> exitProcess(0)
+                    "show" -> showWindow()
                 }
             }
         }

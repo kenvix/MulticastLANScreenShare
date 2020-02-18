@@ -12,7 +12,7 @@ class MulticastServer(
     private var serverJob: CompletableJob? = null
     private var serverWorkScope: CoroutineScope? = null
 
-    var onReceive: ((packet: DatagramPacket) -> Unit)? = null
+    override var onReceive: ((packet: DatagramPacket) -> Unit)? = null
 
     fun listen() {
         if (onReceive == null)

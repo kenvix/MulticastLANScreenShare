@@ -10,7 +10,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-public class ClientUI {
+class ClientUI {
     private static final ClientUI INSTANCE = new ClientUI();
     private JFrame frame;
     private ImagePanel panel;
@@ -54,5 +54,13 @@ public class ClientUI {
     public void setSize(int width, int height) {
         Dimension dimension = new Dimension(width, height);
         frame.setPreferredSize(dimension);
+    }
+
+    public JFrame getFrame() {
+        return frame;
+    }
+
+    public ImagePanel getPanel() {
+        return panel;
     }
 }
