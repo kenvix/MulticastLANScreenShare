@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.libjpegturbo.turbojpeg.TJDecompressor
 import sun.awt.image.codec.JPEGImageDecoderImpl
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
@@ -150,10 +151,12 @@ class ImageNetwork(
         }
     }
 
-    fun decompressImage(array: ByteArray): BufferedImage {
-        ByteArrayInputStream(array).use {
-            return JPEGImageDecoderImpl(it).decodeAsBufferedImage()
-        }
+    fun decompressImage(array: ByteArray, w: Int, h: Int): BufferedImage {
+        return TJDecompressor(array).decompress(w, h, BufferedImage.TYPE_INT_RGB, 0)
+
+//        ByteArrayInputStream(array).use {
+//            return JPEGImageDecoderImpl(it).decodeAsBufferedImage()
+//        }
     }
 
     fun convertIntArrayToByteArray(colorInts: IntArray): ByteArray {

@@ -40,10 +40,15 @@ public class SwingClientUI implements BaseUI {
     }
 
     @Override
-    public void update(BufferedImage image) {
+    public void update(BufferedImage image, boolean shouldResize) {
         try {
-            Dimension size = panel.getSize();
-            panel.setImg(resize(image, size.width, size.height));
+            if (shouldResize) {
+                Dimension size = panel.getSize();
+                panel.setImg(resize(image, size.width, size.height));
+            } else {
+                panel.setImg(image);
+            }
+
             panel.repaint();
         } catch (Exception e) {
             e.printStackTrace();
@@ -82,5 +87,15 @@ public class SwingClientUI implements BaseUI {
     @Override
     public boolean isShowing() {
         return frame != null && frame.isShowing();
+    }
+
+    @Override
+    public int getWidth() {
+        return panel.getWidth();
+    }
+
+    @Override
+    public int getHeight() {
+        return panel.getHeight();
     }
 }

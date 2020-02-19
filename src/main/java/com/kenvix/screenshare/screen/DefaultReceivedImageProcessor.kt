@@ -29,7 +29,7 @@ class DefaultReceivedImageProcessor(
             workScope.launch {
                 try {
                     val begin = System.currentTimeMillis()
-                    val img = imageNetwork.decompressImage(data)
+                    val img = imageNetwork.decompressImage(data, GuiDispatcher.width, GuiDispatcher.height)
                     val end = System.currentTimeMillis()
                     GuiDispatcher.update(img)
                     val end2 = System.currentTimeMillis()

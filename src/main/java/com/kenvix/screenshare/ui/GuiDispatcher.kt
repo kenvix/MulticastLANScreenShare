@@ -10,12 +10,17 @@ object GuiDispatcher {
         set(value) {
             clientUi?.title = value
         }
+    val width
+        get() = clientUi?.width ?: 0
+
+    val height
+        get() = clientUi?.height ?: 0
 
     fun show(width: Int, height: Int) = clientUi?.show(width, height)
 
-    fun update(image: BufferedImage) {
+    fun update(image: BufferedImage, shouldResize: Boolean = false) {
         if (clientUi?.isShowing == true)
-            clientUi?.update(image)
+            clientUi?.update(image, shouldResize)
     }
 
     fun setSize(width: Int, height: Int) {
