@@ -22,6 +22,6 @@ interface ScreenCapturer {
     fun updateScreenProfile()
 
     interface Callback {
-        suspend fun onFragmentCaptured(image: RenderedImage, x: Int, y: Int)
+        suspend fun onFragmentCaptured(image: BufferedImage, x: Int, y: Int)
     }
 }

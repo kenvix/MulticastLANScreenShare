@@ -133,7 +133,7 @@ object Main {
         options.addOption("m", "monitor",true, "[Server] Monitor ID. Default 0")
         options.addOption("t", "packet-size",true, "[Server] UDP Packet size. Default 1000")
         options.addOption("n", "no-loopback",false, "[Server] Do NOT show local playback")
-        options.addOption("q", "quality",true, "[Server] Image quality. Default 0.5")
+        options.addOption("q", "quality",true, "[Server] Image quality (1~100). Default 50")
 
         options.addOption("w", "width",true, "Playback window width")
         options.addOption("e", "height",true, "Playback window height")

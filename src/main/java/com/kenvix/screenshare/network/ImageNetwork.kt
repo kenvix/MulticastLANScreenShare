@@ -1,24 +1,23 @@
 package com.kenvix.screenshare.network
 
-import com.kenvix.screenshare.network.UDPNetwork
 import com.kenvix.screenshare.ui.GuiDispatcher
+import com.kenvix.utils.lang.WeakRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.libjpegturbo.turbojpeg.TJ
+import org.libjpegturbo.turbojpeg.TJCompressor
 import org.libjpegturbo.turbojpeg.TJDecompressor
 import sun.awt.image.codec.JPEGImageDecoderImpl
 import java.awt.image.BufferedImage
-import java.awt.image.DataBufferInt
 import java.awt.image.RenderedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
-import java.nio.Buffer
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
-import java.util.*
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
@@ -36,8 +35,8 @@ class ImageNetwork(
     var onImageBytesReceived: ((data: ByteArray, beginTime: Long, finishTime: Long) -> Unit)? = null
     private lateinit var receiveMonitorThread: Thread
 
-    suspend fun sendToLoopback(image: RenderedImage) = withContext(Dispatchers.Default) {
-        GuiDispatcher.update(image as BufferedImage)
+    suspend fun sendToLoopback(image: BufferedImage) = withContext(Dispatchers.Default) {
+        GuiDispatcher.update(image, true)
     }
 
     suspend fun sendToNetwork(colorBytes: ByteArray) = withContext(Dispatchers.Default) {
@@ -125,7 +124,15 @@ class ImageNetwork(
         receiveMonitorThread.start()
     }
 
-    fun compressImage(image: RenderedImage, compressionQuality: Float = 0.7f): ByteArray {
+    fun compressImage(image: BufferedImage, compressionQuality: Int = 70): ByteArray {
+        TJCompressor(image, 0, 0, 0, 0).use { jpegCompressor ->
+            jpegCompressor.setJPEGQuality(compressionQuality)
+            jpegCompressor.setSubsamp(TJ.SAMP_411)
+            return jpegCompressor.compress(0)
+        }
+    }
+
+    fun compressImageAwt(image: WeakRef<RenderedImage>, compressionQuality: Float = 0.7f): ByteArray {
         // The important part: Create in-memory stream
         ByteArrayOutputStream().use { compressed ->
             val outputStream = ImageIO.createImageOutputStream(compressed)
@@ -141,7 +148,7 @@ class ImageNetwork(
             jpgWriteParam.compressionQuality = compressionQuality
             jpgWriter.output = outputStream
 
-            jpgWriter.write(null, IIOImage(image, null, null), jpgWriteParam)
+            jpgWriter.write(null, IIOImage(image(), null, null), jpgWriteParam)
 
             // Dispose the writer to free resources
             jpgWriter.dispose()
@@ -152,11 +159,13 @@ class ImageNetwork(
     }
 
     fun decompressImage(array: ByteArray, w: Int, h: Int): BufferedImage {
-        return TJDecompressor(array).decompress(w, h, BufferedImage.TYPE_INT_RGB, 0)
+        return TJDecompressor(array).use { it.decompress(w, h, BufferedImage.TYPE_INT_RGB, 0) }
+    }
 
-//        ByteArrayInputStream(array).use {
-//            return JPEGImageDecoderImpl(it).decodeAsBufferedImage()
-//        }
+    fun decompressImageAwt(array: ByteArray): BufferedImage {
+        ByteArrayInputStream(array).use {
+            return JPEGImageDecoderImpl(it).decodeAsBufferedImage()
+        }
     }
 
     fun convertIntArrayToByteArray(colorInts: IntArray): ByteArray {

@@ -29,15 +29,13 @@ import javax.imageio.ImageWriteParam
 class DefaultFragmentImageProcessor(
     val network: UDPNetwork,
     val packetSize: Int = 1000,
-    val quality: Float = 0.5f
+    val quality: Int = 50
 ) : ScreenCapturer.Callback {
 
     private val imageNetwork = ImageNetwork(network, packetSize)
 
     @UseExperimental(ExperimentalUnsignedTypes::class)
-    override suspend fun onFragmentCaptured(image: RenderedImage, x: Int, y: Int) = withContext(Dispatchers.Default) {
-        val colorInts: IntArray = (image.data.dataBuffer as DataBufferInt).data
-
+    override suspend fun onFragmentCaptured(image: BufferedImage, x: Int, y: Int) = withContext(Dispatchers.Default) {
         if (Main.isLoopbackEnabled)
             launch { imageNetwork.sendToLoopback(image) }
 
