@@ -47,16 +47,17 @@ class ImageNetwork(
 
             launch(Dispatchers.IO) {
                 val offset = sizeChannel.receive()
-                val buffer = ByteBuffer.allocate(8 + 4 + 4 + 4 + 4 + packetSize)
+                val buffer = ByteBuffer.allocate(8 + 4 * 4 + packetSize)
                 val size = if (offset + packetSize > colorBytes.size) colorBytes.size - offset else packetSize
 
                 buffer.asLongBuffer().put(System.currentTimeMillis())
                 val intBuffer = buffer.asIntBuffer()
-                intBuffer.put(offset)
-                intBuffer.put(size)
-                intBuffer.put(colorBytes.size)
-                intBuffer.put(numToSend)
+                intBuffer.put(2, offset)
+                intBuffer.put(3, size)
+                intBuffer.put(4, colorBytes.size)
+                intBuffer.put(5, numToSend)
 
+                buffer.position(8 + 4 * 4)
                 if (offset + packetSize > colorBytes.size)
                     buffer.put(colorBytes, offset, colorBytes.size - offset)
                 else
@@ -94,14 +95,17 @@ class ImageNetwork(
             val totalSize = input.getInt(8 + 4 + 4)
             bufferReceiveTotalNum = input.getInt(8 + 4 + 4 + 4)
             val data = ByteArray(dataSize)
-            input.get(data, 8 + 4 + 4 + 4 + 4, dataSize)
+
+            input.position(8 + 4 + 4 + 4 + 4)
+            input.get(data, 0, dataSize)
 
             if (receiveBuffer == null || (receiveBuffer!!.capacity() != totalSize && bufferTime < time)) {
                 receiveBuffer = ByteBuffer.allocate(totalSize)
                 bufferReceivedNum = 0
             }
 
-            receiveBuffer!!.put(data, offset, dataSize)
+            receiveBuffer!!.position(offset)
+            receiveBuffer!!.put(data, 0, dataSize)
             bufferReceivedNum++
 
             if (bufferReceiveTotalNum == bufferReceivedNum)

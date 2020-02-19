@@ -1,26 +1,25 @@
 package com.kenvix.screenshare.ui
 
-import java.awt.Dimension
+import com.kenvix.screenshare.Main
 import java.awt.image.BufferedImage
 
 object GuiDispatcher {
-    private val clientUi: ClientUI? = ClientUI.getInstance()
-
+    var clientUi: BaseUI? = Main.clientUI
     var title
-        get() = clientUi?.frame?.title ?: ""
+        get() = clientUi?.title ?: ""
         set(value) {
-            clientUi?.setTitle(value)
+            clientUi?.title = value
         }
 
     fun show(width: Int, height: Int) = clientUi?.show(width, height)
 
     fun update(image: BufferedImage) {
-        if (clientUi?.frame?.isShowing == true)
-            clientUi.update(image)
+        if (clientUi?.isShowing == true)
+            clientUi?.update(image)
     }
 
     fun setSize(width: Int, height: Int) {
-        if (clientUi?.frame?.isShowing == true)
-            clientUi.setSize(width, height)
+        if (clientUi?.isShowing == true)
+            clientUi?.setSize(width, height)
     }
 }

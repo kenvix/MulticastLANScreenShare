@@ -6,9 +6,12 @@ import com.kenvix.screenshare.network.MulticastServer
 import com.kenvix.screenshare.screen.DefaultFragmentImageProcessor
 import com.kenvix.screenshare.screen.DefaultReceivedImageProcessor
 import com.kenvix.screenshare.screen.RobotScreenCapturer
+import com.kenvix.screenshare.ui.BaseUI
 import com.kenvix.screenshare.ui.GuiDispatcher
+import com.kenvix.screenshare.ui.SwingClientUI
 import org.apache.commons.cli.*
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.logging.*
@@ -25,6 +28,11 @@ object Main {
 
     var isLoopbackEnabled = true
         private set
+
+    var networkInterface: NetworkInterface? = null
+        private set
+
+    val clientUI: BaseUI = SwingClientUI.getInstance()
 
     var windowWidth = getOptionValue('w', 1366)
     var windowHeight = getOptionValue('e', 768)
@@ -43,11 +51,14 @@ object Main {
         val port = getOptionValue('p', 1919)
         isLoopbackEnabled = commands?.hasOption('n') != true
 
+        if (commands?.hasOption('i') == true)
+            networkInterface = NetworkInterface.getByName(commands!!.getOptionValue('i'))
+
         if (commands?.hasOption('s') == true) {
             runAsServer(host, port)
 
             if (isLoopbackEnabled)
-                showWindow()
+                showWindow("Server Loopback")
         } else {
             println("Client mode. Target multicast Address: $host    Port: $port")
             runAsClient(host, port)
@@ -59,7 +70,7 @@ object Main {
     }
 
     private fun runAsServer(host: String, port: Int) {
-        val server = MulticastServer(multicastAddress = InetAddress.getByName(host), multicastPort = port)
+        val server = MulticastServer(multicastAddress = InetAddress.getByName(host), multicastPort = port, networkInterface = networkInterface)
 
         server.listen()
 
@@ -73,16 +84,16 @@ object Main {
     private fun runAsClient(host: String, port: Int) {
         showWindow()
 
-        val server = MulticastServer(multicastAddress = InetAddress.getByName(host), multicastPort = port)
+        val server = MulticastServer(multicastAddress = InetAddress.getByName(host), multicastPort = port, networkInterface = networkInterface)
         server.listen()
 
         val receiver = DefaultReceivedImageProcessor(server, packetSize = getOptionValue('t', 1000))
-        receiver.start(1000)
+        receiver.start(30000)
     }
 
-    private fun showWindow() {
+    private fun showWindow(title: String = "Client") {
         GuiDispatcher.show(windowWidth, windowHeight)
-        GuiDispatcher.title = "Client"
+        GuiDispatcher.title = title
     }
 
     private fun readConsoleCommand() {
@@ -123,7 +134,7 @@ object Main {
 
         options.addOption("w", "width",true, "Playback window width")
         options.addOption("e", "height",true, "Playback window height")
-        options.addOption("i", "network",true, "Which network card to use")
+        options.addOption("i", "network",true, "Which network interface to use")
 
         options.addOption("h", "help", false, "Print help messages")
 
@@ -134,6 +145,14 @@ object Main {
     private fun printHelp() {
         val formatter = HelpFormatter()
         formatter.printHelp("java -jar ScreenShare.jar", header, options, "", true)
+
+        println()
+        println("Online Network interfaces on this machine: ")
+        println(NetworkInterface.getNetworkInterfaces().toList().filter {
+            it.inetAddresses.hasMoreElements() && !it.isLoopback && it.isUp && !it.isVirtual
+        }.joinToString(transform = {
+            "${it.name}: ${it.displayName} (${it.inetAddresses.toList().joinToString { it.hostAddress }})"
+        }, separator = "\n"))
     }
 
     inline fun <reified T> getOptionValue(opt: Char, defaultValue: T): T {

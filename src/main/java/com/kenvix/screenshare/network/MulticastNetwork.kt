@@ -8,19 +8,24 @@ package com.kenvix.screenshare.network
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.DatagramPacket
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.MulticastSocket
+import java.net.*
 
 abstract class MulticastNetwork(
     val multicastAddress: InetAddress = InetAddress.getByName("230.114.5.14"),
-    val multicastPort: Int = 1919
+    val multicastPort: Int = 1919,
+    val networkInterface: NetworkInterface? = null
 ) : AutoCloseable, UDPNetwork {
 
-    val multicastSocket: MulticastSocket = MulticastSocket(multicastPort)
     val multicastSocketAddress = InetSocketAddress(multicastAddress, multicastPort)
+    val multicastSocket: MulticastSocket
     override var maxPacketSize: Int = 1200
+
+    init {
+        multicastSocket = MulticastSocket(multicastPort)
+
+        if (networkInterface != null)
+            multicastSocket.networkInterface = networkInterface
+    }
 
     override suspend fun send(packet: DatagramPacket) = withContext(Dispatchers.IO) {
         multicastSocket.send(packet)
@@ -45,6 +50,7 @@ abstract class MulticastNetwork(
     }
 
     override fun close() {
+        //multicastSocket.leaveGroup(multicastAddress)
         multicastSocket.close()
     }
 

@@ -6,20 +6,27 @@
 
 package com.kenvix.screenshare.ui;
 
+import org.jetbrains.annotations.NotNull;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-class ClientUI {
-    private static final ClientUI INSTANCE = new ClientUI();
+public class SwingClientUI implements BaseUI {
+    private static final SwingClientUI INSTANCE = new SwingClientUI();
     private JFrame frame;
     private ImagePanel panel;
 
-    public static ClientUI getInstance() {
+    public static SwingClientUI getInstance() {
         return INSTANCE;
     }
 
+    @Override
     public void show(int width, int height) {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) { }
+
         frame = new JFrame();
         panel = new ImagePanel();
         setSize(width, height);
@@ -30,6 +37,7 @@ class ClientUI {
         frame.setVisible(true);
     }
 
+    @Override
     public void update(BufferedImage image) {
         Dimension size = panel.getSize();
         panel.setImg(resize(image, size.width, size.height));
@@ -47,10 +55,12 @@ class ClientUI {
         return dimg;
     }
 
+    @Override
     public void setTitle(String title) {
         frame.setTitle(title);
     }
 
+    @Override
     public void setSize(int width, int height) {
         Dimension dimension = new Dimension(width, height);
         frame.setPreferredSize(dimension);
@@ -62,5 +72,16 @@ class ClientUI {
 
     public ImagePanel getPanel() {
         return panel;
+    }
+
+    @NotNull
+    @Override
+    public String getTitle() {
+        return frame.getTitle();
+    }
+
+    @Override
+    public boolean isShowing() {
+        return frame != null && frame.isShowing();
     }
 }
