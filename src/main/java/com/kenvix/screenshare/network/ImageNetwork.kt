@@ -2,10 +2,12 @@ package com.kenvix.screenshare.network
 
 import com.kenvix.screenshare.network.UDPNetwork
 import com.kenvix.screenshare.ui.GuiDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import sun.awt.image.codec.JPEGImageDecoderImpl
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.awt.image.RenderedImage
@@ -75,7 +77,7 @@ class ImageNetwork(
         network.onReceive = null
     }
 
-    fun beginImageRead(receiveTimeoutMills: Long, toleratePacketLossRate: Float = 0.9f) {
+    fun beginImageRead(workScope: CoroutineScope, receiveTimeoutMills: Long, toleratePacketLossRate: Float = 0.9f) {
         receiveMonitorThread = Thread({
             val sleepTime = receiveTimeoutMills / 3
             while (!Thread.interrupted()) {
@@ -88,28 +90,35 @@ class ImageNetwork(
         }, "Image Receive Timeout monitor")
 
         network.onReceive = { packet ->
-            val input = ByteBuffer.wrap(packet.data).asReadOnlyBuffer()
-            val time = input.getLong(0)
-            val offset = input.getInt(8)
-            val dataSize = input.getInt(8 + 4)
-            val totalSize = input.getInt(8 + 4 + 4)
-            bufferReceiveTotalNum = input.getInt(8 + 4 + 4 + 4)
-            val data = ByteArray(dataSize)
+            workScope.launch {
+                try {
+                    val input = ByteBuffer.wrap(packet.data).asReadOnlyBuffer()
+                    val time = input.getLong(0)
+                    val offset = input.getInt(8)
+                    val dataSize = input.getInt(8 + 4)
+                    val totalSize = input.getInt(8 + 4 + 4)
+                    bufferReceiveTotalNum = input.getInt(8 + 4 + 4 + 4)
+                    val data = ByteArray(dataSize)
 
-            input.position(8 + 4 + 4 + 4 + 4)
-            input.get(data, 0, dataSize)
+                    input.position(8 + 4 + 4 + 4 + 4)
+                    input.get(data, 0, dataSize)
 
-            if (receiveBuffer == null || (receiveBuffer!!.capacity() != totalSize && bufferTime < time)) {
-                receiveBuffer = ByteBuffer.allocate(totalSize)
-                bufferReceivedNum = 0
+                    if (receiveBuffer == null || (receiveBuffer!!.capacity() != totalSize && bufferTime < time)) {
+                        receiveBuffer = ByteBuffer.allocate(totalSize)
+                        bufferReceivedNum = 0
+                        bufferTime = time
+                    }
+
+                    receiveBuffer!!.position(offset)
+                    receiveBuffer!!.put(data, 0, dataSize)
+                    bufferReceivedNum++
+
+                    if (bufferReceiveTotalNum == bufferReceivedNum)
+                        onImageBytesReceived?.invoke(receiveBuffer!!.array(), bufferTime, time)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
-
-            receiveBuffer!!.position(offset)
-            receiveBuffer!!.put(data, 0, dataSize)
-            bufferReceivedNum++
-
-            if (bufferReceiveTotalNum == bufferReceivedNum)
-                onImageBytesReceived?.invoke(receiveBuffer!!.array(), bufferTime, time)
         }
 
         receiveMonitorThread.start()
@@ -143,7 +152,7 @@ class ImageNetwork(
 
     fun decompressImage(array: ByteArray): BufferedImage {
         ByteArrayInputStream(array).use {
-            return ImageIO.read(it)
+            return JPEGImageDecoderImpl(it).decodeAsBufferedImage()
         }
     }
 

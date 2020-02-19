@@ -6,11 +6,13 @@
 
 package com.kenvix.screenshare.ui;
 
+import net.coobird.thumbnailator.Thumbnails;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 public class SwingClientUI implements BaseUI {
     private static final SwingClientUI INSTANCE = new SwingClientUI();
@@ -39,20 +41,17 @@ public class SwingClientUI implements BaseUI {
 
     @Override
     public void update(BufferedImage image) {
-        Dimension size = panel.getSize();
-        panel.setImg(resize(image, size.width, size.height));
-        panel.repaint();
+        try {
+            Dimension size = panel.getSize();
+            panel.setImg(resize(image, size.width, size.height));
+            panel.repaint();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    public static BufferedImage resize(BufferedImage img, int newW, int newH) {
-        Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
-        BufferedImage dimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
-
-        Graphics2D g2d = dimg.createGraphics();
-        g2d.drawImage(tmp, 0, 0, null);
-        g2d.dispose();
-
-        return dimg;
+    public static BufferedImage resize(BufferedImage img, int newW, int newH) throws IOException {
+        return Thumbnails.of(img).size(newW, newH).asBufferedImage();
     }
 
     @Override
