@@ -6,6 +6,7 @@
 
 package com.kenvix.screenshare.screen
 
+import com.kenvix.screenshare.Main
 import com.kenvix.screenshare.network.ImageNetwork
 import com.kenvix.screenshare.network.UDPNetwork
 import com.kenvix.screenshare.ui.GuiDispatcher
@@ -37,7 +38,10 @@ class DefaultFragmentImageProcessor(
     override suspend fun onFragmentCaptured(image: RenderedImage, x: Int, y: Int) = withContext(Dispatchers.Default) {
         val colorInts: IntArray = (image.data.dataBuffer as DataBufferInt).data
 
-        imageNetwork.sendToLoopback(image)
-        imageNetwork.sendToNetwork(imageNetwork.compressImage(image, quality))
+        if (Main.isLoopbackEnabled)
+            launch { imageNetwork.sendToLoopback(image) }
+
+        launch { imageNetwork.sendToNetwork(imageNetwork.compressImage(image, quality)) }
+        Unit
     }
 }

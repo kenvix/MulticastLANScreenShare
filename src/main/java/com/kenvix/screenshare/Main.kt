@@ -4,6 +4,7 @@ package com.kenvix.screenshare
 
 import com.kenvix.screenshare.network.MulticastServer
 import com.kenvix.screenshare.screen.DefaultFragmentImageProcessor
+import com.kenvix.screenshare.screen.DefaultReceivedImageProcessor
 import com.kenvix.screenshare.screen.RobotScreenCapturer
 import com.kenvix.screenshare.ui.GuiDispatcher
 import org.apache.commons.cli.*
@@ -22,6 +23,9 @@ object Main {
     var commands: CommandLine? = null
         private set
 
+    var isLoopbackEnabled = true
+        private set
+
     var windowWidth = getOptionValue('w', 1366)
     var windowHeight = getOptionValue('e', 768)
 
@@ -37,13 +41,16 @@ object Main {
         println(header)
         val host = getOptionValue('a', "230.114.5.14")
         val port = getOptionValue('p', 1919)
-
-        runAsClient()
+        isLoopbackEnabled = commands?.hasOption('n') != true
 
         if (commands?.hasOption('s') == true) {
             runAsServer(host, port)
+
+            if (isLoopbackEnabled)
+                showWindow()
         } else {
             println("Client mode. Target multicast Address: $host    Port: $port")
+            runAsClient(host, port)
         }
 
         println()
@@ -57,14 +64,20 @@ object Main {
         server.listen()
 
         val processor = DefaultFragmentImageProcessor(server, packetSize = getOptionValue('t', 1000))
-        val capturer = RobotScreenCapturer(processor, fps = getOptionValue('f', 5), monitor = getOptionValue('m', 0))
+        val capturer = RobotScreenCapturer(processor, fps = getOptionValue('f', 6), monitor = getOptionValue('m', 0))
         capturer.start()
 
         println("Server started at Multicast Address: $host    Port: $port")
     }
 
-    private fun runAsClient() {
+    private fun runAsClient(host: String, port: Int) {
         showWindow()
+
+        val server = MulticastServer(multicastAddress = InetAddress.getByName(host), multicastPort = port)
+        server.listen()
+
+        val receiver = DefaultReceivedImageProcessor(server, packetSize = getOptionValue('t', 1000))
+        receiver.start(1000)
     }
 
     private fun showWindow() {
@@ -102,13 +115,15 @@ object Main {
         options.addOption("v", "verbose", false, "Verbose logging mode.")
         options.addOption("s", "server",false, "Render server mode.")
 
-        options.addOption("f", "fps",true, "[Server] FPS. Default 5")
+        options.addOption("f", "fps",true, "[Server] FPS. Default 6")
         options.addOption("m", "monitor",true, "[Server] Monitor ID. Default 0")
         options.addOption("t", "packet-size",true, "[Server] UDP Packet size. Default 1000")
         options.addOption("n", "no-loopback",false, "[Server] Do NOT show local playback")
+        options.addOption("q", "quality",true, "[Server] Image quality. Default 0.5")
 
         options.addOption("w", "width",true, "Playback window width")
         options.addOption("e", "height",true, "Playback window height")
+        options.addOption("i", "network",true, "Which network card to use")
 
         options.addOption("h", "help", false, "Print help messages")
 

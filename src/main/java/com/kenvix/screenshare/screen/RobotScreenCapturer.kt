@@ -13,6 +13,7 @@ import java.awt.Rectangle
 import java.awt.Robot
 import java.awt.Toolkit
 import java.awt.image.BufferedImage
+import java.util.concurrent.Executors
 
 class RobotScreenCapturer(
     override var callback: ScreenCapturer.Callback? = null,
@@ -48,7 +49,9 @@ class RobotScreenCapturer(
         if (shouldCaptureFullscreenOnce) {
             captureWorkScope!!.launch {
                 for (tick in tickerChannel) {
-                    callback?.onFragmentCaptured(capture(0, 0, screenWidth, screenHeight), 0, 0)
+                    launch(Dispatchers.Default) {
+                        callback?.onFragmentCaptured(capture(0, 0, screenWidth, screenHeight), 0, 0)
+                    }
                 }
             }
         } else {

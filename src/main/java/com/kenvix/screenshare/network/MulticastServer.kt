@@ -15,9 +15,6 @@ class MulticastServer(
     override var onReceive: ((packet: DatagramPacket) -> Unit)? = null
 
     fun listen() {
-        if (onReceive == null)
-            throw IllegalArgumentException("To start a server, onReceive should not be null")
-
         if (serverJob?.isActive == true)
             throw IllegalStateException("Already listening")
 

@@ -11,6 +11,7 @@ import java.awt.image.DataBufferInt
 import java.awt.image.RenderedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.Closeable
 import java.nio.Buffer
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
@@ -23,11 +24,17 @@ import kotlin.math.ceil
 class ImageNetwork(
     val network: UDPNetwork,
     val packetSize: Int = 1000
-) {
+): Closeable {
+    @Volatile private var receiveBuffer: ByteBuffer? = null
+    @Volatile private var bufferTime: Long = 0
+    @Volatile private var bufferReceivedNum: Int = 0
+    @Volatile private var bufferReceiveTotalNum: Int = 0
+
+    var onImageBytesReceived: ((data: ByteArray, beginTime: Long, finishTime: Long) -> Unit)? = null
+    private lateinit var receiveMonitorThread: Thread
+
     suspend fun sendToLoopback(image: RenderedImage) = withContext(Dispatchers.Default) {
-        launch {
-            GuiDispatcher.update(image as BufferedImage)
-        }
+        GuiDispatcher.update(image as BufferedImage)
     }
 
     suspend fun sendToNetwork(colorBytes: ByteArray) = withContext(Dispatchers.Default) {
@@ -62,19 +69,30 @@ class ImageNetwork(
         }
     }
 
-    private var receiveBuffer: ByteBuffer? = null
-    private var bufferTime: Long = 0
-    private var bufferReceivedNum: Int = 0
-    var onImageReceived: ((data: ByteArray, beginTime: Long, finishTime: Long) -> Unit)? = null
+    fun stopImageRead() {
+        receiveMonitorThread.interrupt()
+        network.onReceive = null
+    }
 
-    fun beginImageRead() {
+    fun beginImageRead(receiveTimeoutMills: Long, toleratePacketLossRate: Float = 0.9f) {
+        receiveMonitorThread = Thread({
+            val sleepTime = receiveTimeoutMills / 3
+            while (!Thread.interrupted()) {
+                if (System.currentTimeMillis() - bufferTime > receiveTimeoutMills && (bufferReceiveTotalNum.toFloat() / bufferReceivedNum) >= toleratePacketLossRate) {
+                    onImageBytesReceived?.invoke(receiveBuffer!!.array(), bufferTime, System.currentTimeMillis())
+                }
+
+                Thread.sleep(sleepTime)
+            }
+        }, "Image Receive Timeout monitor")
+
         network.onReceive = { packet ->
             val input = ByteBuffer.wrap(packet.data).asReadOnlyBuffer()
             val time = input.getLong(0)
             val offset = input.getInt(8)
             val dataSize = input.getInt(8 + 4)
             val totalSize = input.getInt(8 + 4 + 4)
-            val totalPacketNum = input.getInt(8 + 4 + 4 + 4)
+            bufferReceiveTotalNum = input.getInt(8 + 4 + 4 + 4)
             val data = ByteArray(dataSize)
             input.get(data, 8 + 4 + 4 + 4 + 4, dataSize)
 
@@ -86,9 +104,11 @@ class ImageNetwork(
             receiveBuffer!!.put(data, offset, dataSize)
             bufferReceivedNum++
 
-            if (totalPacketNum == bufferReceivedNum)
-                onImageReceived?.invoke(receiveBuffer!!.array(), bufferTime, time)
+            if (bufferReceiveTotalNum == bufferReceivedNum)
+                onImageBytesReceived?.invoke(receiveBuffer!!.array(), bufferTime, time)
         }
+
+        receiveMonitorThread.start()
     }
 
     fun compressImage(image: RenderedImage, compressionQuality: Float = 0.7f): ByteArray {
@@ -117,11 +137,24 @@ class ImageNetwork(
         }
     }
 
+    fun decompressImage(array: ByteArray): BufferedImage {
+        ByteArrayInputStream(array).use {
+            return ImageIO.read(it)
+        }
+    }
+
     fun convertIntArrayToByteArray(colorInts: IntArray): ByteArray {
         val byteBuffer: ByteBuffer = ByteBuffer.allocate(colorInts.size * 4)
         val intBuffer: IntBuffer = byteBuffer.asIntBuffer()
         intBuffer.put(colorInts)
 
         return byteBuffer.array()
+    }
+
+    override fun close() {
+        if (this::receiveMonitorThread.isInitialized) {
+            if (receiveMonitorThread.isAlive)
+                stopImageRead()
+        }
     }
 }
