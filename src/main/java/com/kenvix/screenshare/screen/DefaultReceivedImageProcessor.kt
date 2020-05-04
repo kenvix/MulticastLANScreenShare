@@ -29,12 +29,11 @@ class DefaultReceivedImageProcessor(
             workScope.launch {
                 try {
                     val begin = System.currentTimeMillis()
-                    val img = imageNetwork.decompressImage(data, GuiDispatcher.width, GuiDispatcher.height)
+                    val img = imageNetwork.decompressImage(data, 0, 0)
+                    GuiDispatcher.update(img, true)
                     val end = System.currentTimeMillis()
-                    GuiDispatcher.update(img)
-                    val end2 = System.currentTimeMillis()
 
-                    GuiDispatcher.title = "Client | ${dateFormatter.format(Date(end))} | Loss 0% | Network Ping ${finishTime - beginTime}ms | Decode ${end - begin}ms | Swing Render ${end2 - end}ms | Total latency ${System.currentTimeMillis() - finishTime}ms"
+                    GuiDispatcher.title = "Client | ${dateFormatter.format(Date(end))} | Loss 0% | Network Ping ${finishTime - beginTime}ms | Decode ${end - begin}ms | Total latency ${System.currentTimeMillis() - finishTime}ms"
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

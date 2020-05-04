@@ -6,6 +6,7 @@
 
 package com.kenvix.screenshare.screen
 
+import com.kenvix.utils.lang.WeakRef
 import java.awt.image.BufferedImage
 import java.awt.image.RenderedImage
 
@@ -22,6 +23,6 @@ interface ScreenCapturer {
     fun updateScreenProfile()
 
     interface Callback {
-        suspend fun onFragmentCaptured(image: BufferedImage, x: Int, y: Int)
+        suspend fun onFragmentCaptured(image: WeakRef<BufferedImage>, x: Int, y: Int)
     }
 }

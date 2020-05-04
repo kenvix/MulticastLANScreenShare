@@ -6,6 +6,8 @@
 
 package com.kenvix.screenshare.screen
 
+import com.kenvix.utils.lang.WeakRef
+import com.kenvix.utils.lang.weakReference
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ticker
 import java.awt.GraphicsEnvironment
@@ -89,9 +91,9 @@ class RobotScreenCapturer(
             captureJob?.cancel()
     }
 
-    private suspend fun capture(x: Int, y: Int, width: Int = actualFragmentWidth, height: Int = actualFragmentHeight): BufferedImage
+    private suspend fun capture(x: Int, y: Int, width: Int = actualFragmentWidth, height: Int = actualFragmentHeight): WeakRef<BufferedImage>
             = withContext(Dispatchers.Default) {
         val rectangle = Rectangle(x, y, width, height)
-        robot.createScreenCapture(rectangle)
+        robot.createScreenCapture(rectangle).weakReference
     }
 }

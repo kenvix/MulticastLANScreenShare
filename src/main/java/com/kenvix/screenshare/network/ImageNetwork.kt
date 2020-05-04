@@ -2,6 +2,7 @@ package com.kenvix.screenshare.network
 
 import com.kenvix.screenshare.ui.GuiDispatcher
 import com.kenvix.utils.lang.WeakRef
+import com.kenvix.utils.lang.weakReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -35,7 +36,7 @@ class ImageNetwork(
     var onImageBytesReceived: ((data: ByteArray, beginTime: Long, finishTime: Long) -> Unit)? = null
     private lateinit var receiveMonitorThread: Thread
 
-    suspend fun sendToLoopback(image: BufferedImage) = withContext(Dispatchers.Default) {
+    suspend fun sendToLoopback(image: WeakRef<BufferedImage>) = withContext(Dispatchers.Default) {
         GuiDispatcher.update(image, true)
     }
 
@@ -124,15 +125,15 @@ class ImageNetwork(
         receiveMonitorThread.start()
     }
 
-    fun compressImage(image: BufferedImage, compressionQuality: Int = 70): ByteArray {
-        TJCompressor(image, 0, 0, 0, 0).use { jpegCompressor ->
+    fun compressImage(image: WeakRef<BufferedImage>, compressionQuality: Int = 70): WeakRef<ByteArray> {
+        TJCompressor(image(), 0, 0, 0, 0).use { jpegCompressor ->
             jpegCompressor.setJPEGQuality(compressionQuality)
             jpegCompressor.setSubsamp(TJ.SAMP_411)
-            return jpegCompressor.compress(0)
+            return jpegCompressor.compress(0).weakReference
         }
     }
 
-    fun compressImageAwt(image: WeakRef<RenderedImage>, compressionQuality: Float = 0.7f): ByteArray {
+    fun compressImageAwt(image: WeakRef<BufferedImage>, compressionQuality: Float = 0.7f): ByteArray {
         // The important part: Create in-memory stream
         ByteArrayOutputStream().use { compressed ->
             val outputStream = ImageIO.createImageOutputStream(compressed)
@@ -158,8 +159,8 @@ class ImageNetwork(
         }
     }
 
-    fun decompressImage(array: ByteArray, w: Int, h: Int): BufferedImage {
-        return TJDecompressor(array).use { it.decompress(w, h, BufferedImage.TYPE_INT_RGB, 0) }
+    fun decompressImage(array: ByteArray, w: Int, h: Int): WeakRef<BufferedImage> {
+        return TJDecompressor(array).use { it.decompress(w, h, BufferedImage.TYPE_INT_RGB, TJ.FLAG_FASTDCT).weakReference }
     }
 
     fun decompressImageAwt(array: ByteArray): BufferedImage {

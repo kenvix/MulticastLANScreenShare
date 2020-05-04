@@ -10,6 +10,7 @@ import com.kenvix.screenshare.Main
 import com.kenvix.screenshare.network.ImageNetwork
 import com.kenvix.screenshare.network.UDPNetwork
 import com.kenvix.screenshare.ui.GuiDispatcher
+import com.kenvix.utils.lang.WeakRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
@@ -35,11 +36,11 @@ class DefaultFragmentImageProcessor(
     private val imageNetwork = ImageNetwork(network, packetSize)
 
     @UseExperimental(ExperimentalUnsignedTypes::class)
-    override suspend fun onFragmentCaptured(image: BufferedImage, x: Int, y: Int) = withContext(Dispatchers.Default) {
+    override suspend fun onFragmentCaptured(image: WeakRef<BufferedImage>, x: Int, y: Int) = withContext(Dispatchers.Default) {
         if (Main.isLoopbackEnabled)
             launch { imageNetwork.sendToLoopback(image) }
 
-        launch { imageNetwork.sendToNetwork(imageNetwork.compressImage(image, quality)) }
+        launch { imageNetwork.sendToNetwork(imageNetwork.compressImageAwt(image, quality / 100f)) }
         Unit
     }
 }

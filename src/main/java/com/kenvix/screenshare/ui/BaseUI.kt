@@ -6,6 +6,7 @@
 
 package com.kenvix.screenshare.ui
 
+import com.kenvix.utils.lang.WeakRef
 import java.awt.image.BufferedImage
 
 interface BaseUI {
@@ -15,6 +16,6 @@ interface BaseUI {
     val height: Int
 
     fun show(width: Int, height: Int)
-    fun update(image: BufferedImage, shouldResize: Boolean)
+    fun update(image: WeakRef<BufferedImage>, shouldResize: Boolean)
     fun setSize(width: Int, height: Int)
 }

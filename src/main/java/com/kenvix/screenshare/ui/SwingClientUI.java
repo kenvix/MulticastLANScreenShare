@@ -6,6 +6,7 @@
 
 package com.kenvix.screenshare.ui;
 
+import com.kenvix.utils.lang.WeakRef;
 import net.coobird.thumbnailator.Thumbnails;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,13 +41,13 @@ public class SwingClientUI implements BaseUI {
     }
 
     @Override
-    public void update(BufferedImage image, boolean shouldResize) {
+    public void update(WeakRef<BufferedImage> image, boolean shouldResize) {
         try {
             if (shouldResize) {
                 Dimension size = panel.getSize();
-                panel.setImg(resize(image, size.width, size.height));
+                panel.setImg(resize(image.invoke(), size.width, size.height));
             } else {
-                panel.setImg(image);
+                panel.setImg(image.invoke());
             }
 
             panel.repaint();

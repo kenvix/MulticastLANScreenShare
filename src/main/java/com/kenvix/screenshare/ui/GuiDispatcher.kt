@@ -1,6 +1,7 @@
 package com.kenvix.screenshare.ui
 
 import com.kenvix.screenshare.Main
+import com.kenvix.utils.lang.WeakRef
 import java.awt.image.BufferedImage
 
 object GuiDispatcher {
@@ -18,7 +19,7 @@ object GuiDispatcher {
 
     fun show(width: Int, height: Int) = clientUi?.show(width, height)
 
-    fun update(image: BufferedImage, shouldResize: Boolean = false) {
+    fun update(image: WeakRef<BufferedImage>, shouldResize: Boolean = false) {
         if (clientUi?.isShowing == true)
             clientUi?.update(image, shouldResize)
     }
